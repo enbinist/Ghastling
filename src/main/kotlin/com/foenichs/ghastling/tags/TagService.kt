@@ -2,7 +2,6 @@ package com.foenichs.ghastling.tags
 
 import com.foenichs.ghastling.db.Guilds
 import com.foenichs.ghastling.db.Tags
-// Import the KTX DSL function (matches the file you provided)
 import dev.minn.jda.ktx.interactions.components.MediaGallery
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -48,8 +47,7 @@ data class Tag(
 
         val textDisplay = TextDisplay.of(text)
 
-        // Build container with optional MediaGallery
-        val container = if (mediaUrl != null) {
+        var container = if (mediaUrl != null) {
             val gallery = MediaGallery {
                 item(mediaUrl)
             }
@@ -57,12 +55,10 @@ data class Tag(
         } else {
             Container.of(textDisplay)
         }
-
         if (style == TagStyle.Accent) {
-            container.withAccentColor(Color(0xB5C8B4))
-        } else {
-            container.withAccentColor(null as Color?)
+            container = container.withAccentColor(Color(0xB5C8B4))
         }
+
         container
     }
 }
