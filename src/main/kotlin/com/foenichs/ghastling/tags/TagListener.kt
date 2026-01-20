@@ -113,15 +113,38 @@ object TagListener {
                     return
                 }
 
-                val chunks = tags.chunked(50)
-                val page1 = chunks.first()
-                val extra = tags.size - page1.size
+                val uncategorized = mutableListOf<String>()
+                val categories = mutableMapOf<String, MutableList<String>>()
 
-                var body =
-                    "### Tags of ${event.guild?.name} (${tags.size})\n" + page1.joinToString(", ") { "`${it.primary}`" }
-                if (extra > 0) body += "\n...and $extra more."
+                for (tag in tags) {
+                    val parts = tag.primary.split(" ", limit = 2)
+                    if (parts.size > 1) {
+                        categories.getOrPut(parts[0]) { mutableListOf() }.add(parts[1])
+                    } else {
+                        uncategorized.add(tag.primary)
+                    }
+                }
 
-                event.replyContainer(body)
+                val sb = StringBuilder()
+                sb.append("### Tags of ${event.guild?.name} (${tags.size})\n")
+
+                if (uncategorized.isNotEmpty()) {
+                    sb.append(uncategorized.joinToString(", ") { "`$it`" })
+                }
+
+                // Sort categories alphabetically
+                for ((category, items) in categories.toSortedMap()) {
+                    val entry = "\n\n**$category** (${items.size}):\n" +
+                            items.joinToString(", ") { "`$it`" }
+
+                    if (sb.length + entry.length > 3950) {
+                        sb.append("\n\n...and more.")
+                        break
+                    }
+                    sb.append(entry)
+                }
+
+                event.replyContainer(sb.toString())
             }
 
             "manage" -> {

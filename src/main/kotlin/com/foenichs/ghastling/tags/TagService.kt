@@ -46,7 +46,7 @@ object TagService {
     private val scope = CoroutineScope(Dispatchers.IO)
 
     // Cache: GuildID -> { Keyword -> Tag }
-    private val cache = ConcurrentHashMap<Long, Map<String, Tag>>()
+    private val cache = ConcurrentHashMap<Long, ConcurrentHashMap<String, Tag>>()
     private val cooldowns = ConcurrentHashMap<String, Long>()
 
     private const val COOLDOWN_MS = 2500L
@@ -131,6 +131,11 @@ object TagService {
         if (cleanKw.length > MAX_KEYWORDS_TOTAL_LEN) throw IllegalArgumentException("Total keywords length exceeds limit ($MAX_KEYWORDS_TOTAL_LEN).")
 
         val primary = cleanKw.split(",").first().trim()
+        val map = getGuildCache(guildId)
+
+        // Retrieve usages from existing cache to preserve count during update
+        val existingTag = if (oldPrimary != null) map[oldPrimary.lowercase()] else map[primary.lowercase()]
+        val currentUsages = existingTag?.usages ?: 0L
 
         transaction {
             if (Guilds.selectAll().where { Guilds.id eq guildId }.empty()) {
@@ -150,7 +155,23 @@ object TagService {
             }
         }
 
-        cache.remove(guildId)
+        existingTag?.keywordList?.forEach { k ->
+            map.remove(k.lowercase())
+        }
+
+        val newTag = Tag(
+            guildId = guildId,
+            primary = primary,
+            keywords = cleanKw,
+            content = content,
+            style = style,
+            usages = currentUsages
+        )
+
+        newTag.keywordList.forEach { k ->
+            map[k.lowercase()] = newTag
+        }
+
         logger.info("Guild $guildId: Tag upserted '$primary' (old: '$oldPrimary')")
         return primary
     }
@@ -163,7 +184,13 @@ object TagService {
             Tags.deleteWhere { (Tags.guildId eq guildId) and (Tags.primaryKeyword eq primary) } > 0
         }
         if (deleted) {
-            cache.remove(guildId)
+            val map = getGuildCache(guildId)
+            val tag = map[primary.lowercase()]
+
+            tag?.keywordList?.forEach { k ->
+                map.remove(k.lowercase())
+            }
+
             logger.info("Guild $guildId: Tag deleted '$primary'")
         }
         return deleted
@@ -180,6 +207,16 @@ object TagService {
                         with(SqlExpressionBuilder) { it.update(usages, usages + 1) }
                     }
                 }
+
+                val map = getGuildCache(guildId)
+                val tag = map[primary.lowercase()]
+
+                if (tag != null) {
+                    val newTag = tag.copy(usages = tag.usages + 1)
+                    newTag.keywordList.forEach { k ->
+                        map[k.lowercase()] = newTag
+                    }
+                }
             } catch (e: Exception) {
                 logger.error("Failed to increment usage: ${e.message}")
             }
@@ -189,9 +226,9 @@ object TagService {
     /**
      * Fetches or constructs the keyword-to-tag map for a guild from the database.
      */
-    private fun getGuildCache(guildId: Long): Map<String, Tag> {
+    private fun getGuildCache(guildId: Long): ConcurrentHashMap<String, Tag> {
         return cache.computeIfAbsent(guildId) { id ->
-            val newMap = HashMap<String, Tag>()
+            val newMap = ConcurrentHashMap<String, Tag>()
             transaction {
                 val rows = Tags.selectAll().where { Tags.guildId eq id }
                 for (row in rows) {
