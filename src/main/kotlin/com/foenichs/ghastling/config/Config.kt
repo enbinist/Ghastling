@@ -1,7 +1,11 @@
 package com.foenichs.ghastling.config
 
+import io.github.cdimascio.dotenv.dotenv
+
 object Config {
-    private val dotenv: Map<String, String> by lazy { Dotenv.load() }
+    private val dotenv = dotenv {
+        ignoreIfMissing = true
+    }
 
     fun get(key: String, default: String? = null): String {
         val fromEnv = System.getenv(key)

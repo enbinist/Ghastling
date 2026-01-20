@@ -27,6 +27,9 @@ dependencies {
     implementation("org.mariadb.jdbc:mariadb-java-client:3.5.7")
     implementation("com.zaxxer:HikariCP:7.0.2")
 
+    // Config
+    implementation("io.github.cdimascio:dotenv-kotlin:6.5.1")
+
     // Logging
     implementation("ch.qos.logback:logback-classic:1.5.24")
 }
