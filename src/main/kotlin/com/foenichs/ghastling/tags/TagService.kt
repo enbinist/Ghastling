@@ -2,6 +2,8 @@ package com.foenichs.ghastling.tags
 
 import com.foenichs.ghastling.db.Guilds
 import com.foenichs.ghastling.db.Tags
+// Import the KTX DSL function (matches the file you provided)
+import dev.minn.jda.ktx.interactions.components.MediaGallery
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -30,14 +32,38 @@ data class Tag(
     val cachedContainer: Container? by lazy {
         if (style == TagStyle.Raw) return@lazy null
 
-        val text = TextDisplay.of(content)
-        val container = Container.of(text)
+        // Detect if content ends with \n\n<URL>
+        val lastSep = content.lastIndexOf("\n\n")
+        var text = content
+        var mediaUrl: String? = null
+
+        if (lastSep != -1) {
+            val suffix = content.substring(lastSep + 2).trim()
+            // Validate URL
+            if (suffix.startsWith("http") && !suffix.any { it.isWhitespace() }) {
+                text = content.take(lastSep)
+                mediaUrl = suffix
+            }
+        }
+
+        val textDisplay = TextDisplay.of(text)
+
+        // Build container with optional MediaGallery
+        val container = if (mediaUrl != null) {
+            val gallery = MediaGallery {
+                item(mediaUrl)
+            }
+            Container.of(textDisplay, gallery)
+        } else {
+            Container.of(textDisplay)
+        }
 
         if (style == TagStyle.Accent) {
             container.withAccentColor(Color(0xB5C8B4))
         } else {
             container.withAccentColor(null as Color?)
         }
+        container
     }
 }
 
