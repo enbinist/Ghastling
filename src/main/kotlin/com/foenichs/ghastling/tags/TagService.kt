@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import net.dv8tion.jda.api.components.container.Container
+import net.dv8tion.jda.api.components.container.ContainerChildComponent
 import net.dv8tion.jda.api.components.textdisplay.TextDisplay
 import net.dv8tion.jda.api.interactions.commands.Command
 import org.jetbrains.exposed.sql.*
@@ -29,10 +30,13 @@ data class Tag(
 ) {
     val keywordList: List<String> by lazy { keywords.split(",").map { it.trim() } }
 
+    /**
+     * Builds the container from the tag content, respecting custom formatting rules.
+     */
     val cachedContainer: Container? by lazy {
         if (style == TagStyle.Raw) return@lazy null
 
-        // Detect if content ends with \n\n<URL>
+        // Detect if content ends with a URL
         val lastSep = content.lastIndexOf("\n\n")
         var text = content
         var mediaUrl: String? = null
@@ -46,16 +50,31 @@ data class Tag(
             }
         }
 
-        val textDisplay = TextDisplay.of(text)
+        val components = mutableListOf<ContainerChildComponent>()
 
-        var container = if (mediaUrl != null) {
-            val gallery = MediaGallery {
-                item(mediaUrl)
+        // Moving headers into separate text display
+        if (text.startsWith("###") && text.contains("\n")) {
+            val splitIndex = text.indexOf("\n")
+            val header = text.take(splitIndex).trim()
+            val body = text.substring(splitIndex + 1).trim()
+
+            components.add(TextDisplay.of(header))
+
+            if (body.isNotEmpty()) {
+                components.add(TextDisplay.of(body))
             }
-            Container.of(textDisplay, gallery)
         } else {
-            Container.of(textDisplay)
+            components.add(TextDisplay.of(text))
         }
+
+        // Moving URLs into media galleries
+        if (mediaUrl != null) {
+            components.add(MediaGallery {
+                item(mediaUrl)
+            })
+        }
+
+        var container = Container.of(components)
         if (style == TagStyle.Accent) {
             container = container.withAccentColor(Color(0xB5C8B4))
         }
