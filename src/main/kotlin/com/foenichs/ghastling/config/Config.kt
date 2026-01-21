@@ -25,4 +25,8 @@ object Config {
     fun getInt(key: String, default: Int): Int {
         return get(key, default.toString()).toInt()
     }
+
+    fun getLong(key: String, default: Long): Long {
+        return get(key, default.toString()).toLong()
+    }
 }

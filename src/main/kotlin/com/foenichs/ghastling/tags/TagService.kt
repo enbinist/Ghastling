@@ -1,5 +1,6 @@
 package com.foenichs.ghastling.tags
 
+import com.foenichs.ghastling.config.AppConfig
 import com.foenichs.ghastling.db.Guilds
 import com.foenichs.ghastling.db.Tags
 import dev.minn.jda.ktx.interactions.components.MediaGallery
@@ -71,10 +72,16 @@ object TagService {
     private val cache = ConcurrentHashMap<Long, ConcurrentHashMap<String, Tag>>()
     private val cooldowns = ConcurrentHashMap<String, Long>()
 
-    private const val COOLDOWN_MS = 2500L
+    // Configurable via init()
+    private var cooldownMs = 2500L
+
     const val MAX_CONTENT_LEN = 2000
     const val MAX_KEYWORD_LEN = 100
     const val MAX_KEYWORDS_TOTAL_LEN = 200
+
+    fun init(config: AppConfig) {
+        this.cooldownMs = config.tagCooldown
+    }
 
     /**
      * Checks if a specific channel and tag combination is on cooldown, returning remaining time in ms.
@@ -85,8 +92,8 @@ object TagService {
         val last = cooldowns[key] ?: 0L
         val diff = now - last
 
-        if (diff < COOLDOWN_MS) {
-            return COOLDOWN_MS - diff
+        if (diff < cooldownMs) {
+            return cooldownMs - diff
         }
 
         cooldowns[key] = now
@@ -249,19 +256,18 @@ object TagService {
      * Fetches or constructs the keyword-to-tag map for a guild from the database.
      */
     private fun getGuildCache(guildId: Long): ConcurrentHashMap<String, Tag> {
-        return cache.computeIfAbsent(guildId) { id ->
-            val newMap = ConcurrentHashMap<String, Tag>()
-            transaction {
-                val rows = Tags.selectAll().where { Tags.guildId eq id }
-                for (row in rows) {
-                    val tag = rowToTag(row)
-                    for (k in tag.keywordList) {
-                        newMap[k.lowercase()] = tag
-                    }
+        cache[guildId]?.let { return it }
+        val newMap = ConcurrentHashMap<String, Tag>()
+        transaction {
+            val rows = Tags.selectAll().where { Tags.guildId eq guildId }
+            for (row in rows) {
+                val tag = rowToTag(row)
+                for (k in tag.keywordList) {
+                    newMap[k.lowercase()] = tag
                 }
             }
-            newMap
         }
+        return cache.computeIfAbsent(guildId) { newMap }
     }
 
     /**
