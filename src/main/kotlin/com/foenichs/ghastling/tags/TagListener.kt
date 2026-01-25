@@ -7,7 +7,6 @@ import dev.minn.jda.ktx.interactions.components.Modal
 import dev.minn.jda.ktx.interactions.components.StringSelectMenu
 import dev.minn.jda.ktx.interactions.components.option
 import net.dv8tion.jda.api.JDA
-import net.dv8tion.jda.api.Permission
 import net.dv8tion.jda.api.components.container.Container
 import net.dv8tion.jda.api.components.textdisplay.TextDisplay
 import net.dv8tion.jda.api.components.textinput.TextInput
@@ -148,11 +147,6 @@ object TagListener {
             }
 
             "manage" -> {
-                if (!event.member!!.hasPermission(Permission.MESSAGE_MANAGE)) {
-                    event.replyContainer("You need the **Manage Messages** permission.")
-                    return
-                }
-
                 val name = event.getOption("name")?.asString ?: return
                 val delete = event.getOption("remove")?.asBoolean ?: false
                 val existing = TagService.find(guildId, name)
