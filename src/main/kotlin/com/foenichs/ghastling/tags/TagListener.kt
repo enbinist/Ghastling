@@ -56,7 +56,8 @@ object TagListener {
                 event.message.delete().queue(
                     null, ErrorHandler().ignore(ErrorResponse.UNKNOWN_MESSAGE, ErrorResponse.MISSING_PERMISSIONS)
                 )
-            } catch (_: Exception) {
+            } catch (e: InsufficientPermissionException) {
+                logger.debug("Cannot delete cooldown message in Guild $guildId: {}", e.permission)
             }
             return
         }
@@ -64,7 +65,8 @@ object TagListener {
         try {
             event.message.delete()
                 .queue(null, ErrorHandler().ignore(ErrorResponse.UNKNOWN_MESSAGE, ErrorResponse.MISSING_PERMISSIONS))
-        } catch (_: Exception) {
+        } catch (e: InsufficientPermissionException) {
+            logger.debug("Cannot delete trigger message in Guild $guildId: {}", e.permission)
         }
 
         try {
@@ -93,7 +95,9 @@ object TagListener {
     private fun onAutocomplete(event: CommandAutoCompleteInteractionEvent) {
         if (event.subcommandName != "manage") return
         val query = event.focusedOption.value
-        event.replyChoices(TagService.autocomplete(event.guild!!.idLong, query)).queue()
+        event.replyChoices(TagService.autocomplete(event.guild!!.idLong, query)).queue(null) { error ->
+            logger.warn("Autocomplete failed for Guild {}: {}", event.guild!!.id, error.message)
+        }
     }
 
     /**
@@ -251,7 +255,9 @@ object TagListener {
      */
     private fun IReplyCallback.replyContainer(markdown: String) {
         val container = Container.of(TextDisplay.of(markdown)).withAccentColor(Color(0xB5C8B4))
-        this.replyComponents(container).useComponentsV2().setEphemeral(true).queue()
+        this.replyComponents(container).useComponentsV2().setEphemeral(true).queue(null) { error ->
+            logger.warn("Failed to send ephemeral reply: {}", error.message)
+        }
     }
 
     /**

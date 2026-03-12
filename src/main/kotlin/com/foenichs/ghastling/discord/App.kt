@@ -15,15 +15,24 @@ import org.slf4j.LoggerFactory
 class App(private val config: AppConfig) {
 
     private val logger = LoggerFactory.getLogger(App::class.java)
+    private lateinit var jda: JDA
 
     fun start() {
-        val jda = light(config.discordToken, enableCoroutines = true) {
+        jda = light(config.discordToken, enableCoroutines = true) {
             enableIntents(GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT)
         }
 
         jda.awaitReady()
         registerCommands(jda)
         TagListener.register(jda)
+        logger.info("Ghastling is ready")
+    }
+
+    fun shutdown() {
+        if (::jda.isInitialized) {
+            jda.shutdown()
+            logger.info("JDA shut down")
+        }
     }
 
     private fun registerCommands(jda: JDA) {
@@ -36,13 +45,16 @@ class App(private val config: AppConfig) {
                 SubcommandData("show", "Find and display tags.")
             )
 
-        // Register and unregister slash commands
         for (guild in jda.guilds) {
             if (guild.idLong in config.allowedGuilds) {
-                guild.upsertCommand(commandData).queue()
-                logger.info("Commands deployed for ${guild.id} (${guild.name})")
+                guild.upsertCommand(commandData).queue(
+                    { logger.info("Commands deployed for ${guild.id} (${guild.name})") },
+                    { logger.error("Failed to deploy commands for ${guild.id} (${guild.name})", it) }
+                )
             } else {
-                guild.updateCommands().queue()
+                guild.updateCommands().queue(null) { error ->
+                    logger.error("Failed to clear commands for ${guild.id}", error)
+                }
             }
         }
     }
