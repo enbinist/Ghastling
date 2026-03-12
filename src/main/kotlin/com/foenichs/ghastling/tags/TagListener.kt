@@ -100,6 +100,7 @@ object TagListener {
     private fun onSlashCommand(event: SlashCommandInteractionEvent) {
         when (event.subcommandName) {
             "show" -> onShowTags(event)
+            "create" -> onCreateTag(event)
             "manage" -> onManageTag(event)
         }
     }
@@ -148,6 +149,21 @@ object TagListener {
         }
 
         return sb.toString()
+    }
+
+    private fun onCreateTag(event: SlashCommandInteractionEvent) {
+        val guildId = event.guild!!.idLong
+        val name = event.getOption("name")?.asString ?: return
+
+        val conflicts = TagService.findConflicts(guildId, name)
+        if (conflicts.isNotEmpty()) {
+            event.replyContainer(formatConflicts(conflicts))
+            return
+        }
+
+        event.replyModal(buildTagModal(null, name)).queue(null) { error ->
+            logger.warn("Failed to open create modal in Guild {}: {}", guildId, error.message)
+        }
     }
 
     private fun onManageTag(event: SlashCommandInteractionEvent) {
@@ -231,7 +247,7 @@ object TagListener {
     }
 
     private fun buildTagModal(existing: Tag?, name: String) =
-        Modal("tag_modal:${existing?.primary ?: ""}", "Manage Tag: ${existing?.primary}") {
+        Modal("tag_modal:${existing?.primary ?: ""}", if (existing != null) "Edit Tag: ${existing.primary}" else "Create Tag") {
             val kw = TextInput.create("keywords", TextInputStyle.SHORT).setPlaceholder("nolfg, m, lfg")
                 .setValue(existing?.keywords ?: name).setRequired(true).build()
             label(

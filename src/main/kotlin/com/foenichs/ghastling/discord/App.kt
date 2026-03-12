@@ -39,7 +39,9 @@ class App(private val config: AppConfig) {
         val commandData = Commands.slash("tags", "Manage tags for this server.")
             .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MESSAGE_MANAGE))
             .addSubcommands(
-                SubcommandData("manage", "Manage and create tags.")
+                SubcommandData("create", "Create a new tag.")
+                    .addOption(OptionType.STRING, "name", "The tag keyword.", true),
+                SubcommandData("manage", "Edit or delete existing tags.")
                     .addOption(OptionType.STRING, "name", "The tag keyword.", true, true)
                     .addOption(OptionType.BOOLEAN, "remove", "Permanently delete this tag.", false),
                 SubcommandData("show", "Find and display tags.")
