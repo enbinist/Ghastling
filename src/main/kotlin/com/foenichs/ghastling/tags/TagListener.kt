@@ -48,7 +48,15 @@ object TagListener {
         if (keyword.isBlank()) return
 
         val guildId = event.guild.idLong
-        val tag = TagService.find(guildId, keyword) ?: return
+        val tag = TagService.find(guildId, keyword)
+
+        if (tag == null) {
+            deleteSilently(event.message, guildId)
+            event.author.openPrivateChannel().queue({ channel ->
+                channel.sendMessage("The tag `$keyword` doesn't exist on **${event.guild.name}**.").queue(null) { _ -> }
+            }, { _ -> })
+            return
+        }
 
         val cooldown = TagService.checkCooldown(event.channel.idLong, tag.primary)
         if (cooldown > 0) {
