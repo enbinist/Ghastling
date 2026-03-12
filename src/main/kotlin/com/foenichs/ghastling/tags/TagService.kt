@@ -153,7 +153,7 @@ object TagService {
      */
     fun findConflicts(guildId: Long, newKeywords: String, ignorePrimary: String? = null): Map<String, String> {
         val map = getGuildCache(guildId)
-        val inputList = newKeywords.split(",", " ").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+        val inputList = newKeywords.split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
         val conflicts = mutableMapOf<String, String>()
 
         for (kw in inputList) {
@@ -171,7 +171,7 @@ object TagService {
     fun createOrUpdate(guildId: Long, rawKeywords: String, content: String, style: TagStyle, oldPrimary: String? = null): String {
         if (content.length > MAX_CONTENT_LEN) throw IllegalArgumentException("Content too long (${content.length} > $MAX_CONTENT_LEN)")
 
-        val cleanKw = rawKeywords.split(",", " ")
+        val cleanKw = rawKeywords.split(",")
             .map { it.trim() }
             .filter { it.isNotEmpty() && it.length <= MAX_KEYWORD_LEN }
             .distinct()

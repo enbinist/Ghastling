@@ -245,7 +245,7 @@ object TagListener {
             label(
                 "Keywords",
                 child = kw,
-                description = "Separated by comma or space. The first one becomes the tag name."
+                description = "These will trigger the tag, with the first one being the primary one."
             )
 
             val content = TextInput.create("content", TextInputStyle.PARAGRAPH)
